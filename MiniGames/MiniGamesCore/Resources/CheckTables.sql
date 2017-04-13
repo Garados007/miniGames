@@ -1,0 +1,19 @@
+With existing AS (
+	SELECT  name
+	FROM sqlite_master
+	WHERE type = 'table'
+),
+needed(name) AS (
+	VALUES 
+		('PluginFiles'),
+		('PluginFactorys')
+),
+both as (
+	SELECT COUNT(*) AS c
+	FROM existing e
+	JOIN needed n
+	USING (name)
+)
+SELECT (SELECT COUNT(*) FROM needed) - both.c AS Dif
+FROM both
+/* Nur wenn Dif == 0 ist, dann existieren alle Tabellen */

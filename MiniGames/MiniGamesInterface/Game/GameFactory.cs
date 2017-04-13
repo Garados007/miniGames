@@ -6,11 +6,10 @@ using System.Threading.Tasks;
 
 namespace MiniGamesInterface.Game
 {
-    public abstract class GameFactory
+    public abstract class GameFactory : IFactory
     {
-        public abstract string GameName { get; }
-
-        public abstract string GameSymbolFile { get; }
+        public abstract string DisplaySymbolFile { get; }
+        public abstract string Name { get; }
 
         public abstract GameBase CreateGame();
     }

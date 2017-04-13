@@ -11,12 +11,18 @@ namespace MiniGamesCore.Plugin
 {
     class PluginSearcher
     {
+        Query fetchInfo, addInfo;
+
         public PluginWrapper[] Search()
         {
-            var l = new List<PluginWrapper>();
-            var d = new DirectoryInfo(Environment.CurrentDirectory + "\\Plugins");
-            if (d.Exists) SearchDir(d, l);
-            return l.ToArray();
+            using (fetchInfo = DB.Create("SELECT Id,PluginType,Name,Description,Enable FROM PluginFiles WHERE Path=?"))
+            using (addInfo = DB.Create("INSERT INTO PluginFiles (Path,NETType,PluginType,Name,Description) VALUES (?,?,?,?,?)"))
+            {
+                var l = new List<PluginWrapper>();
+                var d = new DirectoryInfo(Environment.CurrentDirectory + "\\Plugins");
+                if (d.Exists) SearchDir(d, l);
+                return l.ToArray();
+            }
         }
 
         void SearchDir(DirectoryInfo d, List<PluginWrapper> l)
@@ -29,24 +35,50 @@ namespace MiniGamesCore.Plugin
 
         void SearchFile(FileInfo f, List<PluginWrapper> l)
         {
-            try
+            fetchInfo.SetValues(f.FullName);
+            using (var r = fetchInfo.ExecuteReader())
             {
-                var ass = Assembly.LoadFile(f.FullName);
-                var type = typeof(PluginBase);
-                foreach (var t in ass.GetTypes())
+                var found = r.Read();
+                if (found && r.GetInt32(4) == 0) //not enabled
                 {
-                    if (t.IsSubclassOf(type))
+                    l.Add(new PluginWrapper()
                     {
-                        var o = (PluginBase)Activator.CreateInstance(t);
-                        l.Add(new PluginWrapper()
+                        Plugin = null,
+                        FileName = f.FullName,
+                        SysEnableLoad = false,
+                        Id = r.GetInt32(0),
+                        SysType = (PluginType)Enum.Parse(typeof(PluginType), r.GetString(1)),
+                        SysName = r.IsDBNull(2) ? null : r.GetString(2),
+                        SysDescription = r.IsDBNull(3) ? null : r.GetString(3),
+                        SysLoaded = false
+                    });
+                }
+                else
+                {
+                    try
+                    {
+                        var ass = Assembly.LoadFile(f.FullName);
+                        var type = typeof(PluginBase);
+                        foreach (var t in ass.GetTypes())
                         {
-                            Plugin = o,
-                            FileName = f.FullName
-                        });
+                            if (t.IsSubclassOf(type))
+                            {
+                                var o = (PluginBase)Activator.CreateInstance(t);
+                                addInfo.SetValues(f.FullName, t.ToString(), o.Type.ToString(), o.Name, o.Description);
+                                addInfo.ExecuteNonQuery();
+                                l.Add(new PluginWrapper()
+                                {
+                                    Plugin = o,
+                                    FileName = f.FullName,
+                                    SysEnableLoad = true,
+                                    SysLoaded = true,
+                                });
+                            }
+                        }
                     }
+                    catch { }
                 }
             }
-            catch { }
         }
     }
 
@@ -95,6 +127,81 @@ namespace MiniGamesCore.Plugin
         public static void CreateState()
         {
             State = new PluginStates();
+            var l = new List<PluginHandle>(DisplayPlugins.Count + GamePlugins.Count + UIPlugins.Count + UnloadedPlugins.Count);
+            l.AddRange(DisplayPlugins);
+            l.AddRange(GamePlugins);
+            l.AddRange(UIPlugins);
+            l.AddRange(UnloadedPlugins);
+            State.AllPlugins = l.ToArray();
+            using (var get = DB.Create("SELECT Id,Autorun,Enabled FROM PluginFactorys WHERE Plugin=? AND NETType=?"))
+            using (var set = DB.Create("INSERT INTO PluginFactorys(Plugin,NETType,Autorun,Enabled) VALUES (?,?,0,1)"))
+            using (var getid = DB.Create("SELECT Id FROM PluginFactorys WHERE Plugin=? AND NETType=?"))
+            {
+                State.AllDisplays = convertFactorys(get, set, getid, (p) => (p as GraphicPluginBase).GetAllDisplays(), DisplayPlugins);
+                State.AllGames = convertFactorys(get, set, getid, (p) => (p as GamePluginBase).GetAllGames(), GamePlugins);
+                State.AllUIs = convertFactorys(get, set, getid, (p) => (p as UIPluginBase).GetAllUIs(), UIPlugins);
+                State.RunningGames = new IFactory[0];
+            }
+        }
+
+        public static void RunAutostart()
+        {
+            var display = FirstAutostart(State.AllDisplays);
+            if (display == null) State.StartDisplay(State.AllDisplays[0]);
+            else State.StartDisplay(display);
+            var ui = FirstAutostart(State.AllUIs);
+            if (ui == null) State.StartUI(State.AllUIs[0]);
+            else State.StartUI(ui);
+            foreach (var f in State.AllGames)
+                if (f is FactoryWrapper && ((FactoryWrapper)f).AutoRun)
+                    State.StartGame(f);
+        }
+
+        static FactoryWrapper FirstAutostart(IFactory[] list)
+        {
+            foreach (var f in list)
+                if (f is FactoryWrapper && ((FactoryWrapper)f).AutoRun)
+                    return (FactoryWrapper)f;
+            return null;
+        }
+
+        static IFactory[] convertFactorys(Query get, Query set, Query getid, Func<PluginBase, IFactory[]> fetch, List<PluginWrapper> source)
+        {
+            List<IFactory> fl = new List<IFactory>();
+            foreach (var p in source)
+                foreach (var f in fetch(p.Plugin))
+                {
+                    get.SetValues(p.Id, f.GetType().ToString());
+                    int id; bool autorun, enabled;
+                    using (var r = get.ExecuteReader())
+                        if (r.Read())
+                        {
+                            id = r.GetInt32(0);
+                            autorun = r.GetInt32(1) != 0;
+                            enabled = r.GetInt32(2) != 0;
+                        }
+                        else
+                        {
+                            set.SetValues(p.Id, f.GetType().ToString());
+                            set.ExecuteNonQuery();
+                            getid.SetValues(p.Id, f.GetType().ToString());
+                            using (var r2 = getid.ExecuteReader())
+                            {
+                                r2.Read();
+                                id = r2.GetInt32(0);
+                                autorun = false;
+                                enabled = true;
+                            }
+                        }
+                    fl.Add(new FactoryWrapper()
+                    {
+                        Factory = f,
+                        SysAutoRun = autorun,
+                        SysEnabled = enabled,
+                        Id = id
+                    });
+                }
+            return fl.ToArray();
         }
     }
 
@@ -103,6 +210,8 @@ namespace MiniGamesCore.Plugin
         public PluginBase Plugin;
 
         public string FileName;
+
+        public int Id;
 
         public PluginType SysType;
 
@@ -163,8 +272,10 @@ namespace MiniGamesCore.Plugin
     class FactoryWrapper : PluginMode
     {
         public IFactory Factory;
+        public object Tag;
         public bool SysAutoRun;
         public bool SysEnabled;
+        public int Id;
 
         public override bool AutoRun
         {
@@ -176,6 +287,11 @@ namespace MiniGamesCore.Plugin
             set
             {
                 SysAutoRun = value;
+                using (var query = DB.Create("UPDATE PluginFactorys SET Autorun=? WHERE Id=?"))
+                {
+                    query.SetValues(value ? 1 : 0, Id);
+                    query.ExecuteNonQuery();
+                }
             }
         }
 
@@ -197,6 +313,11 @@ namespace MiniGamesCore.Plugin
             set
             {
                 SysEnabled = value;
+                using (var query = DB.Create("UPDATE PluginFactorys SET Enabled=? WHERE Id=?"))
+                {
+                    query.SetValues(value ? 1 : 0, Id);
+                    query.ExecuteNonQuery();
+                }
             }
         }
 
@@ -213,17 +334,174 @@ namespace MiniGamesCore.Plugin
     {
         public override void StartDisplay(IFactory display)
         {
-            throw new NotImplementedException();
+            if (!(display is FactoryWrapper)) throw new ArgumentException("display", "wrong factory type");
+            if (display != RuntimeSettings.CurrentDisplayFactoryWrapper)
+            {
+                var old = RuntimeSettings.CurrentDisplay;
+                RuntimeSettings.CurrentDisplayFactoryWrapper = (FactoryWrapper)display;
+                RuntimeSettings.CurrentDisplay = ((MiniGamesInterface.Display.DisplayFactory)RuntimeSettings.CurrentDisplayFactoryWrapper.Factory)
+                    .CreateDisplay();
+                RuntimeSettings.CurrentDisplayFactory = (MiniGamesInterface.Display.DisplayFactory)RuntimeSettings.CurrentDisplayFactoryWrapper.Factory;
+                PluginManager.State.CurrentDisplay = display;
+                old?.Hide();
+                old?.Dispose();
+            }
         }
 
         public override void StartGame(IFactory game)
         {
-            throw new NotImplementedException();
+            if (!(game is FactoryWrapper)) throw new ArgumentException("game", "wrong factory type");
+            if (game != RuntimeSettings.CurrentGameFactoryWrapper)
+            {
+                RuntimeSettings.CurrentGame?.Pause();
+                RuntimeSettings.CurrentGameFactoryWrapper = (FactoryWrapper)game;
+                bool found = false;
+                for (var i = 0; i<PluginManager.State.RunningGames.Length; ++i)
+                    if (PluginManager.State.RunningGames[i] == game)
+                    {
+                        found = true;
+                        RuntimeSettings.CurrentGame = (MiniGamesInterface.Game.GameBase)RuntimeSettings.CurrentGameFactoryWrapper.Tag;
+                        break;
+                    }
+                if (!found)
+                {
+                    RuntimeSettings.CurrentGame = ((MiniGamesInterface.Game.GameFactory)RuntimeSettings.CurrentGameFactoryWrapper.Factory)
+                        .CreateGame();
+                    RuntimeSettings.CurrentGame.CurrentDisplay = new Middleware.DisplayFactoryWrapper();
+                    var l = PluginManager.State.RunningGames.ToList();
+                    l.Add(game);
+                    PluginManager.State.RunningGames = l.ToArray();
+                    RuntimeSettings.CurrentGameFactoryWrapper.Tag = RuntimeSettings.CurrentGame;
+                }
+            }
+            PluginManager.State.CurrentGame = game;
+            RuntimeSettings.CurrentUI.Hide();
+            RuntimeSettings.CurrentGame.Run();
         }
 
         public override void StartUI(IFactory ui)
         {
-            throw new NotImplementedException();
+            if (!(ui is FactoryWrapper)) throw new ArgumentException("ui", "wrong factory type");
+            if (ui != RuntimeSettings.CurrentUIFactoryWrapper)
+            {
+                if (RuntimeSettings.CurrentUI != null)
+                {
+                    RuntimeSettings.CurrentUI.Hide();
+                    RuntimeSettings.CurrentUI.Dispose();
+                }
+                RuntimeSettings.CurrentUIFactoryWrapper = (FactoryWrapper)ui;
+                RuntimeSettings.CurrentUI = ((MiniGamesInterface.UI.UIFactory)RuntimeSettings.CurrentUIFactoryWrapper.Factory)
+                    .CreateUI(PluginManager.State);
+                RuntimeSettings.CurrentUI.CurrentDisplay = new Middleware.DisplayFactoryWrapper();
+
+                PluginManager.State.CurrentUI = ui;
+            }
+            PluginManager.State.CurrentGame = null;
+            RuntimeSettings.CurrentGame?.Pause();
+            RuntimeSettings.CurrentUI.Show();
+        }
+
+        public new IFactory[] AllDisplays
+        {
+            get
+            {
+                return base.AllDisplays;
+            }
+            set
+            {
+                base.AllDisplays = value;
+            }
+        }
+
+        public new IFactory[] AllGames
+        {
+            get
+            {
+                return base.AllGames;
+            }
+
+            set
+            {
+                base.AllGames = value;
+            }
+        }
+
+        public new PluginHandle[] AllPlugins
+        {
+            get
+            {
+                return base.AllPlugins;
+            }
+
+            set
+            {
+                base.AllPlugins = value;
+            }
+        }
+
+        public new IFactory[] AllUIs
+        {
+            get
+            {
+                return base.AllUIs;
+            }
+
+            set
+            {
+                base.AllUIs = value;
+            }
+        }
+
+        public new IFactory CurrentDisplay
+        {
+            get
+            {
+                return base.CurrentDisplay;
+            }
+
+            set
+            {
+                base.CurrentDisplay = value;
+            }
+        }
+
+        public new IFactory CurrentGame
+        {
+            get
+            {
+                return base.CurrentGame;
+            }
+
+            set
+            {
+                base.CurrentGame = value;
+            }
+        }
+
+        public new IFactory CurrentUI
+        {
+            get
+            {
+                return base.CurrentUI;
+            }
+
+            set
+            {
+                base.CurrentUI = value;
+            }
+        }
+
+        public new IFactory[] RunningGames
+        {
+            get
+            {
+                return base.RunningGames;
+            }
+
+            set
+            {
+                base.RunningGames = value;
+            }
         }
     }
 }

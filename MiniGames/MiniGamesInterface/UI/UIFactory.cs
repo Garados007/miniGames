@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MiniGamesInterface.UI
 {
-    public abstract class UIFactory
+    public abstract class UIFactory : IFactory
     {
         public abstract string Name { get; }
 
@@ -17,6 +17,8 @@ namespace MiniGamesInterface.UI
 
     public abstract class UIBase : IDisposable
     {
+        public Display.DisplayFactory CurrentDisplay { get; set; }
+
         public CurrentState CurrentState { get; private set; }
 
         public UIBase(CurrentState currentState)
@@ -33,21 +35,21 @@ namespace MiniGamesInterface.UI
 
     public abstract class CurrentState
     {
-        public IFactory[] AllDisplays { get; protected set; }
+        public virtual IFactory[] AllDisplays { get; protected set; }
 
-        public IFactory[] AllGames { get; protected set; }
+        public virtual IFactory[] AllGames { get; protected set; }
 
-        public IFactory[] AllUIs { get; protected set; }
+        public virtual IFactory[] AllUIs { get; protected set; }
 
-        public PluginHandle[] AllPlugins { get; protected set; }
+        public virtual PluginHandle[] AllPlugins { get; protected set; }
 
-        public IFactory CurrentDisplay { get; protected set; }
+        public virtual IFactory CurrentDisplay { get; protected set; }
 
-        public IFactory CurrentGame { get; protected set; }
+        public virtual IFactory CurrentGame { get; protected set; }
 
-        public IFactory[] RunningGames { get; protected set; }
+        public virtual IFactory[] RunningGames { get; protected set; }
 
-        public IFactory CurrentUI { get; protected set; }
+        public virtual IFactory CurrentUI { get; protected set; }
 
         public abstract void StartDisplay(IFactory display);
 

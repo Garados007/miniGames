@@ -6,7 +6,7 @@ using System.Threading.Tasks;
 
 namespace MiniGamesInterface.Display
 {
-    public abstract class DisplayFactory
+    public abstract class DisplayFactory : IFactory
     {
         public abstract string Name { get; }
 
