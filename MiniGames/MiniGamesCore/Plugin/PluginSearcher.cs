@@ -11,12 +11,18 @@ namespace MiniGamesCore.Plugin
 {
     class PluginSearcher
     {
-        Query fetchInfo, addInfo;
+        Query fetchInfo, addInfo, enabled, fetchId;
 
         public PluginWrapper[] Search()
         {
+            using (enabled = DB.Create("WITH d AS (SELECT Enable FROM PluginFiles WHERE Path=?), "+
+                "e AS (SELECT COUNT(*) c FROM d WHERE Enable = 1), " +
+                "a AS (SELECT COUNT(*) c FROM d) " +
+                "SELECT(CASE WHEN a.c = 0 THEN - 1 ELSE e.c END) " +
+                "FROM e, a"))
             using (fetchInfo = DB.Create("SELECT Id,PluginType,Name,Description,Enable FROM PluginFiles WHERE Path=?"))
-            using (addInfo = DB.Create("INSERT INTO PluginFiles (Path,NETType,PluginType,Name,Description) VALUES (?,?,?,?,?)"))
+            using (fetchId = DB.Create("SELECT Id FROM PluginFiles WHERE Path=? AND NETType=?"))
+            using (addInfo = DB.Create("INSERT OR IGNORE INTO PluginFiles (Path,NETType,PluginType,Name,Description) VALUES (?,?,?,?,?)"))
             {
                 var l = new List<PluginWrapper>();
                 var d = new DirectoryInfo(Environment.CurrentDirectory + "\\Plugins");
@@ -35,23 +41,26 @@ namespace MiniGamesCore.Plugin
 
         void SearchFile(FileInfo f, List<PluginWrapper> l)
         {
-            fetchInfo.SetValues(f.FullName);
-            using (var r = fetchInfo.ExecuteReader())
+            enabled.SetValues(f.FullName);
+            using (var r = enabled.ExecuteReader())
             {
-                var found = r.Read();
-                if (found && r.GetInt32(4) == 0) //not enabled
+                r.Read();
+                if (r.GetInt32(0) == 0)
                 {
-                    l.Add(new PluginWrapper()
-                    {
-                        Plugin = null,
-                        FileName = f.FullName,
-                        SysEnableLoad = false,
-                        Id = r.GetInt32(0),
-                        SysType = (PluginType)Enum.Parse(typeof(PluginType), r.GetString(1)),
-                        SysName = r.IsDBNull(2) ? null : r.GetString(2),
-                        SysDescription = r.IsDBNull(3) ? null : r.GetString(3),
-                        SysLoaded = false
-                    });
+                    fetchInfo.SetValues(f.FullName);
+                    using (var r2 = fetchInfo.ExecuteReader())
+                        while (r2.Read())
+                            l.Add(new PluginWrapper()
+                            {
+                                Plugin = null,
+                                FileName = f.FullName,
+                                SysEnableLoad = false,
+                                Id = r2.GetInt32(0),
+                                SysType = (PluginType)Enum.Parse(typeof(PluginType), r2.GetString(1)),
+                                SysName = r2.IsDBNull(2) ? null : r2.GetString(2),
+                                SysDescription = r2.IsDBNull(3) ? null : r2.GetString(3),
+                                SysLoaded = false
+                            });
                 }
                 else
                 {
@@ -66,6 +75,13 @@ namespace MiniGamesCore.Plugin
                                 var o = (PluginBase)Activator.CreateInstance(t);
                                 addInfo.SetValues(f.FullName, t.ToString(), o.Type.ToString(), o.Name, o.Description);
                                 addInfo.ExecuteNonQuery();
+                                fetchId.SetValues(f.FullName, t.ToString());
+                                int id;
+                                using (var r2 = fetchId.ExecuteReader())
+                                {
+                                    r2.Read();
+                                    id = r2.GetInt32(0);
+                                }
                                 l.Add(new PluginWrapper()
                                 {
                                     Plugin = o,
@@ -147,10 +163,10 @@ namespace MiniGamesCore.Plugin
         public static void RunAutostart()
         {
             var display = FirstAutostart(State.AllDisplays);
-            if (display == null) State.StartDisplay(State.AllDisplays[0]);
+            if (display == null) { if (State.AllDisplays.Length > 0) State.StartDisplay(State.AllDisplays[0]); }
             else State.StartDisplay(display);
             var ui = FirstAutostart(State.AllUIs);
-            if (ui == null) State.StartUI(State.AllUIs[0]);
+            if (ui == null) { if (State.AllUIs.Length > 0) State.StartUI(State.AllUIs[0]); }
             else State.StartUI(ui);
             foreach (var f in State.AllGames)
                 if (f is FactoryWrapper && ((FactoryWrapper)f).AutoRun)

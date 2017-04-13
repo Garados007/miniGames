@@ -10,9 +10,9 @@ namespace MiniGamesInterface
     {
         public abstract PluginType Type { get; }
 
-        public string Name { get; }
+        public abstract string Name { get; }
 
-        public string Description { get; }
+        public abstract string Description { get; }
     }
 
     public enum PluginType

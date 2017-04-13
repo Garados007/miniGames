@@ -4,8 +4,17 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 VisualStudioVersion = 14.0.25123.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiniGamesCore", "MiniGamesCore\MiniGamesCore.csproj", "{23396861-E60D-46CA-A97C-EAFB48317F80}"
+	ProjectSection(ProjectDependencies) = postProject
+		{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B} = {C9D4F591-3AF0-4CE6-917F-8238ECDEE55B}
+	EndProjectSection
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MiniGamesInterface", "MiniGamesInterface\MiniGamesInterface.csproj", "{DB1AFBB6-EF3E-4BEA-8E68-41D4C25A7833}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Plugins", "Plugins", "{EF17ADCD-D530-40AA-BED5-300C45A6136F}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Display", "Display", "{A5468C47-E46B-4328-B404-8EAA49D4E413}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "SmallFormDisplay", "SmallFormDisplay\SmallFormDisplay.csproj", "{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,8 +30,16 @@ Global
 		{DB1AFBB6-EF3E-4BEA-8E68-41D4C25A7833}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{DB1AFBB6-EF3E-4BEA-8E68-41D4C25A7833}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{DB1AFBB6-EF3E-4BEA-8E68-41D4C25A7833}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
+	EndGlobalSection
+	GlobalSection(NestedProjects) = preSolution
+		{A5468C47-E46B-4328-B404-8EAA49D4E413} = {EF17ADCD-D530-40AA-BED5-300C45A6136F}
+		{C9D4F591-3AF0-4CE6-917F-8238ECDEE55B} = {A5468C47-E46B-4328-B404-8EAA49D4E413}
 	EndGlobalSection
 EndGlobal
