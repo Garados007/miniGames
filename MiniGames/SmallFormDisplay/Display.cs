@@ -5,7 +5,7 @@ using System.Data;
 using System.Drawing;
 using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Windows.Forms;
 using MiniGamesInterface.Display;
 
@@ -13,9 +13,28 @@ namespace SmallFormDisplay
 {
     public partial class Display : Form
     {
+        public static Display Current;
+
         public Display()
         {
             InitializeComponent();
+            buffer = BufferedGraphicsManager.Current.Allocate(CreateGraphics(), new Rectangle(new Point(), ClientSize));
+            new Thread(run).Start();
+        }
+
+        BufferedGraphics buffer;
+        Thread renderer;
+        public Frame CurrentFrame;
+        
+        void run()
+        {
+            while (!Disposing && !IsDisposed)
+            {
+                CurrentFrame?.Render(buffer.Graphics, ClientSize);
+                buffer.Render();
+                Thread.Sleep(20);
+            }
+            buffer.Dispose();
         }
 
         public void InvokeOrRun(Action action)
@@ -45,6 +64,15 @@ namespace SmallFormDisplay
             Display = new Display();
             Application.Run(Display);
         }
+
+        public override float AspectRatio
+        {
+            get
+            {
+                var s = Display.ClientSize;
+                return (float)s.Width / s.Height;
+            }
+        }
     }
 
     public class DisplayFactory : MiniGamesInterface.Display.DisplayFactory
@@ -70,6 +98,11 @@ namespace SmallFormDisplay
             return new DisplayWorker();
         }
 
+        public override FrameBase CreateFrame()
+        {
+            return new Frame();
+        }
+
         public override LoadingMessageBase CreateLoadingMessage(string message)
         {
             throw new NotImplementedException();
@@ -79,5 +112,31 @@ namespace SmallFormDisplay
         {
             throw new NotImplementedException();
         }
+    }
+
+    public class Frame : FrameBase, IRenderable
+    {
+        public override void Dispose()
+        {
+        }
+
+        public void Render(Graphics g, Size size)
+        {
+            using (var brush = new SolidBrush(BackgroundColor))
+                g.FillRectangle(brush, 0, 0, size.Width, size.Height);
+            foreach (var e in Elements)
+                if (e is IRenderable)
+                    ((IRenderable)e).Render(g, size);
+        }
+
+        public override void Show()
+        {
+            Display.Current.CurrentFrame = this;
+        }
+    }
+
+    public interface IRenderable
+    {
+        void Render(Graphics g, Size size);
     }
 }

@@ -88,6 +88,7 @@ namespace MiniGamesCore.Plugin
                                     FileName = f.FullName,
                                     SysEnableLoad = true,
                                     SysLoaded = true,
+                                    Id = id
                                 });
                             }
                         }

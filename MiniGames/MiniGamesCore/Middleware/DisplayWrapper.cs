@@ -4,6 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MiniGamesInterface.Display;
+using System.Drawing;
 
 namespace MiniGamesCore.Middleware
 {
@@ -28,6 +29,11 @@ namespace MiniGamesCore.Middleware
         public override DisplayBase CreateDisplay()
         {
             return new DisplayWrapper();
+        }
+
+        public override FrameBase CreateFrame()
+        {
+            return new FrameWrapper();
         }
 
         public override LoadingMessageBase CreateLoadingMessage(string message)
@@ -71,6 +77,14 @@ namespace MiniGamesCore.Middleware
         public override void Show()
         {
             Current.Show();
+        }
+
+        public override float AspectRatio
+        {
+            get
+            {
+                return Current.AspectRatio;
+            }
         }
     }
 
@@ -148,6 +162,45 @@ namespace MiniGamesCore.Middleware
                 Current.Height = value;
             }
         }
+
+        public override Color BackgroundColor
+        {
+            get
+            {
+                return Current.BackgroundColor;
+            }
+
+            set
+            {
+                Current.BackgroundColor = value;
+            }
+        }
+
+        public override Color ForegroundColor
+        {
+            get
+            {
+                return Current.ForegroundColor;
+            }
+
+            set
+            {
+                Current.ForegroundColor = value;
+            }
+        }
+
+        public override string ImagePath
+        {
+            get
+            {
+                return Current.ImagePath;
+            }
+
+            set
+            {
+                Current.ImagePath = value;
+            }
+        }
     }
 
     class LoadingMessageWrapper : LoadingMessageBase
@@ -170,6 +223,34 @@ namespace MiniGamesCore.Middleware
         {
             RuntimeSettings.CurrentDisplayFactoryChanged -= RuntimeSettings_CurrentDisplayFactoryChanged;
             Current?.Dispose();
+        }
+    }
+
+    class FrameWrapper : FrameBase
+    {
+        public FrameBase Current { get; private set; }
+
+        public FrameWrapper()
+        {
+            RuntimeSettings.CurrentDisplayFactoryChanged += RuntimeSettings_CurrentDisplayFactoryChanged;
+            Current = RuntimeSettings.CurrentDisplayFactory.CreateFrame();
+        }
+
+        private void RuntimeSettings_CurrentDisplayFactoryChanged()
+        {
+            Current?.Dispose();
+            RuntimeSettings.CurrentDisplayFactoryChanged += RuntimeSettings_CurrentDisplayFactoryChanged;
+        }
+
+        public override void Dispose()
+        {
+            RuntimeSettings.CurrentDisplayFactoryChanged -= RuntimeSettings_CurrentDisplayFactoryChanged;
+            Current.Dispose();
+        }
+
+        public override void Show()
+        {
+            Current.Show();
         }
     }
 }
