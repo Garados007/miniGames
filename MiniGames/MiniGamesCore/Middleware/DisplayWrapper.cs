@@ -252,5 +252,62 @@ namespace MiniGamesCore.Middleware
         {
             Current.Show();
         }
+
+        public override void Add(IFrameable element)
+        {
+            Current.Add(element);
+        }
+
+        public override Color BackgroundColor
+        {
+            get
+            {
+                return Current.BackgroundColor;
+            }
+
+            set
+            {
+                Current.BackgroundColor = value;
+            }
+        }
+
+        public override IFrameable[] Elements
+        {
+            get
+            {
+                return Current.Elements;
+            }
+        }
+
+        public override Color ForegroundColor
+        {
+            get
+            {
+                return Current.ForegroundColor;
+            }
+
+            set
+            {
+                Current.ForegroundColor = value;
+            }
+        }
+
+        public override string ImagePath
+        {
+            get
+            {
+                return Current.ImagePath;
+            }
+
+            set
+            {
+                Current.ImagePath = value;
+            }
+        }
+
+        public override void Remove(IFrameable element)
+        {
+            Current.Remove(element);
+        }
     }
 }

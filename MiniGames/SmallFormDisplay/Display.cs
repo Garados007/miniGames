@@ -17,6 +17,7 @@ namespace SmallFormDisplay
 
         public Display()
         {
+            Current = this;
             InitializeComponent();
             buffer = BufferedGraphicsManager.Current.Allocate(CreateGraphics(), new Rectangle(new Point(), ClientSize));
             new Thread(run).Start();
@@ -24,7 +25,7 @@ namespace SmallFormDisplay
 
         BufferedGraphics buffer;
         Thread renderer;
-        public Frame CurrentFrame;
+        public static Frame CurrentFrame;
         
         void run()
         {
@@ -131,7 +132,7 @@ namespace SmallFormDisplay
 
         public override void Show()
         {
-            Display.Current.CurrentFrame = this;
+            Display.CurrentFrame = this;
         }
     }
 
