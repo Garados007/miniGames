@@ -6,7 +6,11 @@ using System.Threading.Tasks;
 
 namespace MiniGamesCore
 {
-    public class Class1
+    public class AppRunner
     {
+        public static void Main(string[] args)
+        {
+
+        }
     }
 }
