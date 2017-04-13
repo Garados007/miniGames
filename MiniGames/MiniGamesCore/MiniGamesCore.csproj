@@ -45,6 +45,7 @@
   <ItemGroup>
     <Compile Include="AppRunner.cs" />
     <Compile Include="Middleware\DisplayFactory.cs" />
+    <Compile Include="Plugin\PluginSearcher.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="RuntimeSettings.cs" />
   </ItemGroup>

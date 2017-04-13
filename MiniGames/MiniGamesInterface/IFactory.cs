@@ -18,8 +18,8 @@ namespace MiniGamesInterface
         public abstract string DisplaySymbolFile { get; }
         public abstract string Name { get; }
 
-        public bool Enabled { get; set; }
+        public abstract bool Enabled { get; set; }
 
-        public bool AutoRun { get; set; }
+        public abstract bool AutoRun { get; set; }
     }
 }
