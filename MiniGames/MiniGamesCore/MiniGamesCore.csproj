@@ -44,7 +44,9 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="AppRunner.cs" />
+    <Compile Include="Middleware\DisplayFactory.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="RuntimeSettings.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\MiniGamesInterface\MiniGamesInterface.csproj">

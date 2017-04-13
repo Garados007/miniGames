@@ -8,7 +8,7 @@ namespace MiniGamesInterface
 {
     public abstract class PluginBase
     {
-        public virtual PluginType Type { get; }
+        public abstract PluginType Type { get; }
 
         public string Name { get; }
 
@@ -20,7 +20,8 @@ namespace MiniGamesInterface
     public enum PluginType
     {
         GraphicRenderer,
-        Game
+        Game,
+        UI
     }
 
     public abstract class GraphicPluginBase : PluginBase
@@ -33,13 +34,45 @@ namespace MiniGamesInterface
             }
         }
 
-
+        public abstract Display.DisplayFactory[] GetAllDisplays();
     }
 
     public abstract class GamePluginBase : PluginBase
     {
+        public sealed override PluginType Type
+        {
+            get
+            {
+                return PluginType.Game;
+            }
+        }
 
+        public abstract Game.GameFactory[] GetAllGames();
     }
 
-    
+    public abstract class UIPluginBase : PluginBase
+    {
+        public sealed override PluginType Type
+        {
+            get
+            {
+                return PluginType.UI;
+            }
+        }
+
+        public abstract UI.UIFactory[] GetAllUIs();
+    }
+
+    public abstract class PluginHandle
+    {
+        public abstract PluginType Type { get;}
+
+        public abstract string Name { get; }
+
+        public abstract string Description { get; }
+
+        public abstract bool EnableLoad { get; set; }
+
+        public abstract bool Loaded { get; }
+    }
 }
